@@ -19,9 +19,14 @@ import android.annotation.TargetApi;
 import android.content.ContentProvider;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.UriMatcher;
 import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
 import android.support.annotation.NonNull;
+
+import static com.example.android.sunshine.data.WeatherContract.*;
+import static com.example.android.sunshine.data.WeatherContract.WeatherEntry.*;
 
 /**
  * This class serves as the ContentProvider for all of Sunshine's data. This class allows us to
@@ -37,12 +42,30 @@ public class WeatherProvider extends ContentProvider {
 
 //  TODO (5) Create static constant integer values named CODE_WEATHER & CODE_WEATHER_WITH_DATE to identify the URIs this ContentProvider can handle
 
+    public static final int CODE_WEATHER = 100;
+    public static final int CODE_WEATHER_WITH_DATE = 101;
 //  TODO (7) Instantiate a static UriMatcher using the buildUriMatcher method
+    public static final UriMatcher sUriMatcher = buildUriMatcher();
 
     WeatherDbHelper mOpenHelper;
 
 //  TODO (6) Write a method called buildUriMatcher where you match URI's to their numeric ID
 
+    public static UriMatcher buildUriMatcher (){
+
+        //initialize a UriMatcher with no matches by passing NO_MATCH to the constructor
+        UriMatcher uriMatcher = new UriMatcher(UriMatcher.NO_MATCH);
+
+        //all the paths added to the URIMatcher have corresponding int.
+        //for each kind of uri you may want to access, add the corresponding match with addURI
+        //the two calls below add matches for the task directory and a single item by id
+
+        uriMatcher.addURI(CONTENT_AUTHORITY, PATH_WEATHER,CODE_WEATHER);
+        uriMatcher.addURI(CONTENT_AUTHORITY, PATH_WEATHER+ "#",CODE_WEATHER_WITH_DATE);
+
+        return uriMatcher;
+
+    }
 //  TODO (1) Implement onCreate
     @Override
     public boolean onCreate() {
@@ -91,7 +114,65 @@ public class WeatherProvider extends ContentProvider {
     @Override
     public Cursor query(@NonNull Uri uri, String[] projection, String selection,
                         String[] selectionArgs, String sortOrder) {
-        throw new RuntimeException("Student, implement the query method!");
+
+      //get acces to the undelying database
+        final SQLiteDatabase db = mOpenHelper.getReadableDatabase();
+
+        //write URI match code and set variable to return Cursor
+        int match = sUriMatcher.match(uri);
+        Cursor retCursor;
+
+        //query for the tasks directory and write a default case
+
+        switch (match){
+
+            case CODE_WEATHER_WITH_DATE:{
+
+                String normalizedUtcDateString = uri.getLastPathSegment();
+
+                String [] selectionArguments = new String[]{
+                        normalizedUtcDateString};
+                retCursor = mOpenHelper.getReadableDatabase().query(
+                        //table we are going to query
+                        TABLE_NAME,
+                        projection,
+                        COLUMN_DATE +" =? ",
+                        selectionArgs,
+                        null,
+                        null,
+                        sortOrder
+                );
+                break;
+
+            }
+            //query for the tasks directory
+            case CODE_WEATHER:
+                retCursor = db.query(TABLE_NAME,
+                              projection,
+                              selection,
+                              selectionArgs,
+                              null,
+                            null,
+                        sortOrder
+                        );
+                break;
+
+
+
+                //default
+          default:
+              throw new UnsupportedOperationException("Unknown uri: "+uri);
+
+
+        }
+        //set notification uri on the cursor and retrun that Cursor
+        retCursor.setNotificationUri(getContext().getContentResolver(),uri);
+
+        //return desired cursor
+
+        return retCursor;
+
+
 
 //      TODO (9) Handle queries on both the weather and weather with date URI
 

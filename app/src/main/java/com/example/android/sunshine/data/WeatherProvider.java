@@ -51,7 +51,7 @@ public class WeatherProvider extends ContentProvider {
         mOpenHelper = new WeatherDbHelper(context);
 
 //      TODO (3) Return true from onCreate to signify success performing setup
-        return false;
+        return true;
     }
 
     /**
